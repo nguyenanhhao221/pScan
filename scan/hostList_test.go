@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/nguyenanhhao221/go-cobra/scan"
+	"github.com/nguyenanhhao221/pScan/scan"
 )
 
 func TestAdd(t *testing.T) {

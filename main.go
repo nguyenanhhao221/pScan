@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/nguyenanhhao221/go-cobra/cmd"
+import "github.com/nguyenanhhao221/pScan/cmd"
 
 func main() {
 	cmd.Execute()

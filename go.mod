@@ -1,4 +1,4 @@
-module github.com/nguyenanhhao221/go-cobra
+module github.com/nguyenanhhao221/pScan
 
 go 1.23.1
 
