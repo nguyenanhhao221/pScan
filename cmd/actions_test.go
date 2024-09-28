@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/nguyenanhhao221/pScan/scan"
 )
 
@@ -80,5 +83,47 @@ func TestActions(t *testing.T) {
 				t.Errorf("Expect %s\n got %s", tc.exp, out)
 			}
 		})
+	}
+}
+
+func TestIntegration(t *testing.T) {
+	hosts := []string{"host1", "host2", "host3"}
+	hostsFile := setUpFile(t, false, hosts)
+	var out bytes.Buffer
+
+	if err := addAction(&out, hostsFile, hosts); err != nil {
+		t.Fatalf("Expect no error, got: %v\n", err)
+	}
+
+	if err := listAction(&out, hostsFile, hosts); err != nil {
+		t.Fatalf("Expect no error, got: %v\n", err)
+	}
+
+	hostToDel := []string{"host1"}
+
+	if err := delAction(&out, hostsFile, hostToDel); err != nil {
+		t.Fatalf("Expect no error, got: %v\n", err)
+	}
+
+	if err := listAction(&out, hostsFile, hosts); err != nil {
+		t.Fatalf("Expect no error, got: %v\n", err)
+	}
+	var expectOut string
+
+	for _, h := range hosts {
+		expectOut += fmt.Sprintf("Added host: %s\n", h)
+	}
+
+	expectOut += strings.Join(hosts, "\n")
+	expectOut += fmt.Sprintln()
+	hostsEnd := []string{"host2", "host3"}
+	for _, h := range hostToDel {
+		expectOut += fmt.Sprintf("Deleted host: %s\n", h)
+	}
+	expectOut += strings.Join(hostsEnd, "\n")
+	expectOut += fmt.Sprintln()
+	got := out.String()
+	if diff := cmp.Diff(expectOut, got); diff != "" {
+		t.Errorf("%s mismatch (-want +got):\n%s", t.Name(), diff)
 	}
 }
