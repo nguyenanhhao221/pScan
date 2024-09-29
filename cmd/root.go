@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -64,7 +65,15 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.pScan.yaml)")
 	rootCmd.PersistentFlags().StringP("hosts-file", "f", "pScan.hosts", "pScan hosts file")
+	replacer := strings.NewReplacer("-", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.SetEnvPrefix("PSCAN")
 
+	// Viper will bind the configuration file value or env call "hosts-file" if user specify to cobra -f, hosts-file flag
+	if err := viper.BindPFlag("hosts-file", rootCmd.PersistentFlags().Lookup("hosts-file")); err != nil {
+		fmt.Fprintf(os.Stderr, "Fail to bind flag of Viper config: %s\n", err.Error())
+		os.Exit(1)
+	}
 	versionTemplate := `{{printf "%s: %s - version %s\n" .Name .Short .Version}}`
 	rootCmd.SetVersionTemplate(versionTemplate)
 }
