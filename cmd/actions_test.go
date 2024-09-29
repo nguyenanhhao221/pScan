@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -86,6 +88,56 @@ func TestActions(t *testing.T) {
 	}
 }
 
+func TestScanAction(t *testing.T) {
+	hosts := []string{"localhost", "invalidhost"}
+	ports := []int{}
+	tmpFile := setUpFile(t, true, hosts)
+
+	// Set up ports, 1 open 1 close
+	for i := 0; i < 2; i++ {
+		ln, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer ln.Close()
+
+		_, portStr, err := net.SplitHostPort(ln.Addr().String())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		portNum, err := strconv.Atoi(portStr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ports = append(ports, portNum)
+
+		if i == 1 {
+			ln.Close()
+		}
+	}
+
+	var out bytes.Buffer
+	err := scanAction(&out, tmpFile, ports)
+	if err != nil {
+		t.Errorf("Expect not error got %q", err)
+	}
+
+	var expectPrintOut string
+	expectPrintOut += fmt.Sprintln("localhost:")
+	expectPrintOut += fmt.Sprintf("\t%d: open\n", ports[0])
+	expectPrintOut += fmt.Sprintf("\t%d: closed\n", ports[1])
+	expectPrintOut += fmt.Sprintln()
+	expectPrintOut += fmt.Sprintln("invalidhost: Host not found")
+	expectPrintOut += fmt.Sprintln()
+
+	got := out.String()
+	if diff := cmp.Diff(expectPrintOut, got); diff != "" {
+		t.Errorf("%s mismatch (-want +got):\n%s", t.Name(), diff)
+	}
+}
+
 func TestIntegration(t *testing.T) {
 	hosts := []string{"host1", "host2", "host3"}
 	hostsFile := setUpFile(t, false, hosts)
@@ -108,6 +160,11 @@ func TestIntegration(t *testing.T) {
 	if err := listAction(&out, hostsFile, hosts); err != nil {
 		t.Fatalf("Expect no error, got: %v\n", err)
 	}
+
+	if err := scanAction(&out, hostsFile, nil); err != nil {
+		t.Fatalf("Expect no error, got: %v\n", err)
+	}
+
 	var expectOut string
 
 	for _, h := range hosts {
@@ -122,6 +179,10 @@ func TestIntegration(t *testing.T) {
 	}
 	expectOut += strings.Join(hostsEnd, "\n")
 	expectOut += fmt.Sprintln()
+	for _, h := range hostsEnd {
+		expectOut += fmt.Sprintf("%s: Host not found\n", h)
+		expectOut += fmt.Sprintln()
+	}
 	got := out.String()
 	if diff := cmp.Diff(expectOut, got); diff != "" {
 		t.Errorf("%s mismatch (-want +got):\n%s", t.Name(), diff)
